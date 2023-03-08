@@ -7,28 +7,29 @@ import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.StripeObject;
 import com.stripe.net.Webhook;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
 @RestController
-public class LandlordRentalController {
+public class StripeController {
+    private String signatureHeaderSecret;
 
-    @GetMapping("/")
-    public String helloWorld(@RequestParam(name = "statement", required = false) Optional<String> statement) {
-        return statement.orElse("Hello World!");
+    public StripeController(
+            final @Value("${stripe.signatureHeaderSecret}") String signatureHeaderSecret
+    ) {
+        this.signatureHeaderSecret = signatureHeaderSecret;
     }
 
-    @PostMapping("/webhook")
+    @PostMapping("/stripe/webhook")
     public ResponseEntity<String> stripeEventHandler(
-            @RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader) {
+            @RequestBody final String payload,
+            @RequestHeader("Stripe-Signature") final String signatureHeader) {
 
         Event event;
         try {
-            event = Webhook.constructEvent(payload, sigHeader, "whsec_3d03c7fa8588f57462d879ec619fcd74758af2406408af1387a94afb1db03006");
+            event = Webhook.constructEvent(payload, signatureHeader, signatureHeaderSecret);
         } catch (JsonSyntaxException e) {
             throw new InvalidPayloadException(e.getMessage());
         } catch (SignatureVerificationException e) {
@@ -63,6 +64,6 @@ public class LandlordRentalController {
                 // Unexpected event type
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-        return new ResponseEntity<>("Success", HttpStatus.OK);
+        return ResponseEntity.ok("");
     }
 }
