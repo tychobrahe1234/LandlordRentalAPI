@@ -1,5 +1,7 @@
 package com.example.landlordrentalapi.controllers;
 
+import com.example.landlordrentalapi.exceptions.InvalidPayloadException;
+import com.google.gson.JsonSyntaxException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -24,12 +26,14 @@ public class LandlordRentalController {
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
 
-        Event event = null;
+        Event event;
         try {
-            event = Webhook.constructEvent(payload, sigHeader, "whsec_rnufepI4MEpDUrZ7pbZbOZsgpy0yL6a5");
+            event = Webhook.constructEvent(payload, sigHeader, "whsec_3d03c7fa8588f57462d879ec619fcd74758af2406408af1387a94afb1db03006");
+        } catch (JsonSyntaxException e) {
+            throw new InvalidPayloadException(e.getMessage());
         } catch (SignatureVerificationException e) {
             System.out.println("Failed signature verification");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed signature verification");
         }
 
         EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
@@ -41,14 +45,18 @@ public class LandlordRentalController {
             // Deserialization failed, probably due to an API version mismatch.
             // Refer to the Javadoc documentation on `EventDataObjectDeserializer` for
             // instructions on how to handle this case, or return an error here.
+            System.out.println("Deserializer Failed");
         }
+
 
         switch (event.getType()) {
             case "payment_intent.succeeded":
                 // ...
+                System.out.println("PAYMENT SUCCEEDED!");
                 break;
             case "payment_method.attached":
                 // ...
+                System.out.println("PAYMENT METHOD ATTACHED");
                 break;
             // ... handle other event types
             default:
