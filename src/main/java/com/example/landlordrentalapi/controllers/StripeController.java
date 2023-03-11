@@ -1,6 +1,7 @@
 package com.example.landlordrentalapi.controllers;
 
 import com.example.landlordrentalapi.exceptions.InvalidPayloadException;
+import com.example.landlordrentalapi.exceptions.SignatureVerificationFailureException;
 import com.google.gson.JsonSyntaxException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
@@ -14,11 +15,10 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class StripeController {
-    private String signatureHeaderSecret;
+    private final String signatureHeaderSecret;
 
     public StripeController(
-            final @Value("${stripe.signatureHeaderSecret}") String signatureHeaderSecret
-    ) {
+            final @Value("${stripe.signatureHeaderSecret}") String signatureHeaderSecret) {
         this.signatureHeaderSecret = signatureHeaderSecret;
     }
 
@@ -33,13 +33,11 @@ public class StripeController {
         } catch (JsonSyntaxException e) {
             throw new InvalidPayloadException(e.getMessage());
         } catch (SignatureVerificationException e) {
-            System.out.println("Failed signature verification");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed signature verification");
+            throw new SignatureVerificationFailureException(e.getMessage());
         }
 
         EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
         StripeObject stripeObject = null;
-
         if (dataObjectDeserializer.getObject().isPresent()) {
             stripeObject = dataObjectDeserializer.getObject().get();
         } else {
@@ -62,7 +60,7 @@ public class StripeController {
             // ... handle other event types
             default:
                 // Unexpected event type
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(event.getType() + " is an invalid event type");
         }
         return ResponseEntity.ok("");
     }
