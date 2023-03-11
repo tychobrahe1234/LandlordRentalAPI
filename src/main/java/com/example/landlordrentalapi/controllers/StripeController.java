@@ -22,7 +22,7 @@ public class StripeController {
         this.signatureHeaderSecret = signatureHeaderSecret;
     }
 
-    @PostMapping("/stripe/webhook")
+    @PostMapping("/webhook_events/stripe")
     public ResponseEntity<String> stripeEventHandler(
             @RequestBody final String payload,
             @RequestHeader("Stripe-Signature") final String signatureHeader) {
