@@ -1,44 +1,43 @@
 package com.example.landlordrentalapi.controllers;
 
 import com.example.landlordrentalapi.exceptions.InvalidPayloadException;
+import com.example.landlordrentalapi.exceptions.SignatureVerificationFailureException;
 import com.google.gson.JsonSyntaxException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.StripeObject;
 import com.stripe.net.Webhook;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
 @RestController
-public class LandlordRentalController {
+public class StripeController {
+    private final String signatureHeaderSecret;
 
-    @GetMapping("/")
-    public String helloWorld(@RequestParam(name = "statement", required = false) Optional<String> statement) {
-        return statement.orElse("Hello World!");
+    public StripeController(
+            final @Value("${stripe.signatureHeaderSecret}") String signatureHeaderSecret) {
+        this.signatureHeaderSecret = signatureHeaderSecret;
     }
 
-    @PostMapping("/webhook")
+    @PostMapping("/webhook_events/stripe")
     public ResponseEntity<String> stripeEventHandler(
-            @RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader) {
+            @RequestBody final String payload,
+            @RequestHeader("Stripe-Signature") final String signatureHeader) {
 
         Event event;
         try {
-            event = Webhook.constructEvent(payload, sigHeader, "whsec_3d03c7fa8588f57462d879ec619fcd74758af2406408af1387a94afb1db03006");
+            event = Webhook.constructEvent(payload, signatureHeader, signatureHeaderSecret);
         } catch (JsonSyntaxException e) {
             throw new InvalidPayloadException(e.getMessage());
         } catch (SignatureVerificationException e) {
-            System.out.println("Failed signature verification");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed signature verification");
+            throw new SignatureVerificationFailureException(e.getMessage());
         }
 
         EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
         StripeObject stripeObject = null;
-
         if (dataObjectDeserializer.getObject().isPresent()) {
             stripeObject = dataObjectDeserializer.getObject().get();
         } else {
@@ -61,8 +60,8 @@ public class LandlordRentalController {
             // ... handle other event types
             default:
                 // Unexpected event type
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(event.getType() + " is an invalid event type");
         }
-        return new ResponseEntity<>("Success", HttpStatus.OK);
+        return ResponseEntity.ok("");
     }
 }
