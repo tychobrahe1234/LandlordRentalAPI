@@ -1,4 +1,9 @@
-To run and develop locally:
+**LandlordRentalAPI**
+
+_Database setup_:
+Change values in `application.properties` to reflect what is on your local machine. Clone the database repository and run the setup scripts on your machine to receive most up to date schema. 
+
+_To run and develop locally:_
 
 1. [Install the Stripe CLI](https://stripe.com/docs/stripe-cli)
    2. Ask Sam to be added to the Stripe development team if you haven't already
